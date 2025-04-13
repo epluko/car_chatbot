@@ -35,6 +35,18 @@ You are helpful assistant for a car retailing company in Europe. Your name is St
 Your role is to chat with a customer and collect information about customer's car preference.
 """
 
+
+def general_system_message_with_summary(state : ConversationState) -> list[SystemMessage]:
+    """Creates and returns a list system messages consists of the general system prompt and a summary.
+    """
+    system_messages = [state.general_system_message]
+    if state.summary:
+        system_messages.append(state.summary)
+        system_messages.append(SystemMessage(content="Use summary of earlier conversation."))
+    return system_messages
+
+
+
 # Nodes names as constants
 # defined for better code readibility
 WELCOME = "Welcome"
@@ -68,13 +80,11 @@ def human_feedback(state: ConversationState):
     logger_debug_basic(state, HUMAN, "node")
     pass
 
+
 AI
 def ai_response(state: ConversationState):
     logger_debug_basic(state, AI, "node")
-    system_messages = [state.general_system_message]
-    if state.summary:
-        system_messages.append(state.summary)
-        system_messages.append(SystemMessage(content="Use summary of earlier conversation."))
+    system_messages = general_system_message_with_summary(state)
     system_messages.append(SystemMessage(
         content="""
             Respond to the customer in a way that is succinct, precise, professional, and polite.
@@ -91,10 +101,7 @@ CONCLUDE_PREF
 def conclude_car_preferences(state: ConversationState):
     logger_debug_basic(state, CONCLUDE_PREF, "node")
     llm_structured = LLM.with_structured_output(CarProperties)
-
-    system_messages = [state.general_system_message]
-    if state.summary:
-        system_messages.append(state.summary)
+    system_messages = general_system_message_with_summary(state)
     system_messages.append(SystemMessage(content="CAR PREFERENCE CONCLUDED EARLIER: " + state.car_preference.model_dump_json()))
     system_messages.append(
         SystemMessage(content="""
@@ -106,7 +113,7 @@ def conclude_car_preferences(state: ConversationState):
             5. Do not update customers preference if you have more then one concluded options to choose.
         """)
     )
-    logger.debug("messages to be passed to llm to conduct car preference:")
+    logger.debug("messages to be passed to llm to conclude car preference:")
     for m in system_messages + state.messages:
         logger.debug(f"{m}")
     result = llm_structured.invoke(system_messages + state.messages)
@@ -156,15 +163,9 @@ def need_summary(state : ConversationState) -> Literal[CONCLUDE_PREF, SUMMARY]:
 SUMMARY
 def make_summary(state : ConversationState):
     logger_debug_basic(state, SUMMARY, "node")
-    # prepare messages
-    instruction = SystemMessage(content = "Create summary of all human and AI messages. Be succinct. Return only summary.")
-    messages = []
-    messages.append(state.general_system_message)
-    if state.summary:
-        messages.append(state.summary)
+    messages = general_system_message_with_summary(state)
     messages.extend(state.messages[:NUM_OF_MESSAGES_TO_SUMMARY])
-    messages.append(instruction)
-    # set of messages prepared
+    messages.append(SystemMessage(content = "Create summary of all human and AI messages. Be succinct. Return only summary."))
     ai_message = LLM.invoke(messages)
     new_summary = SystemMessage(content="SUMMARY OF EARLIER COMMUNICATION WITH CUSTOMER: " + ai_message.content)
     logger.debug(f"current summary: {state.summary}")
