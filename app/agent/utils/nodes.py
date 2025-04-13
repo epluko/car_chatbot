@@ -58,6 +58,7 @@ NEED_SUMMARY = "Need_summary"
 Q_NEED_SUMMARY = "Q-need_summary"
 SUMMARY = "Make_summary"
 CONTINUE_CHAT = "Continue_chat"
+GOOD_BYE = "Good_bye"
 
 
 WELCOME
@@ -85,16 +86,14 @@ AI
 def ai_response(state: ConversationState):
     logger_debug_basic(state, AI, "node")
     system_messages = general_system_message_with_summary(state)
-    system_messages.append(SystemMessage(
-        content="""
-            Respond to the customer in a way that is succinct, precise, professional, and polite.
-            If the customer’s message is off-topic or irrelevant,
-                acknowledge it courteously and guide the conversation back to the main topic.
-            Keep your response under 100 words.
-            """
-        ))
+    system_messages.append(SystemMessage(content="""
+        Respond to the customer in a way that is succinct, precise, professional, and polite.
+        If the customer’s message is off-topic or irrelevant,
+            acknowledge it courteously and guide the conversation back to the main topic.
+        Keep your response under 100 words.
+        """))
     ai_message = LLM.invoke(system_messages + state.messages)
-    return {'messages' : ai_message}  # I can return ai_message without a list dues to reducer modification
+    return {'messages' : ai_message}  # I can return ai_message without a list due to reducer modification
 
 
 CONCLUDE_PREF
@@ -129,7 +128,7 @@ def conclude_car_preferences(state: ConversationState):
 
 CONTINUE_CHAT
 NUM_OF_MESSAGES_TO_EVALUATE = 3
-def continue_chat(state: ConversationState) -> Literal[Q_NEED_SUMMARY, END]:
+def continue_chat(state: ConversationState) -> Literal[Q_NEED_SUMMARY, GOOD_BYE]:
     logger_debug_basic(state, CONTINUE_CHAT, "edge")
     system_messages = [state.general_system_message]
     system_messages.append(
@@ -144,8 +143,21 @@ def continue_chat(state: ConversationState) -> Literal[Q_NEED_SUMMARY, END]:
         logger.debug(f"go to: {CONCLUDE_PREF}")
         return Q_NEED_SUMMARY
     else:
-        logger.debug(f"go to: {END}")
-        return END
+        logger.debug(f"go to: {GOOD_BYE}")
+        return GOOD_BYE
+
+
+GOOD_BYE
+def good_bye(state: ConversationState):
+    logger_debug_basic(state, GOOD_BYE, "node")
+    system_messages = general_system_message_with_summary(state)
+    system_messages.append(SystemMessage(content="""
+        The customer has indicated they do not wish to continue the chat.
+        Please generate a succinct, professional, and polite goodbye message.
+        Kindly assure the customer they are always welcome to return whenever they choose to reach out again.
+        """))
+    ai_message = LLM.invoke(system_messages + state.messages)
+    return {'messages' : ai_message}  # I can return ai_message without a list due to reducer modification
 
 
 NUM_OF_MESSAGES_TO_SUMMARY = 4
