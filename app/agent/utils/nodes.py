@@ -75,7 +75,14 @@ def ai_response(state: ConversationState):
     if state.summary:
         system_messages.append(state.summary)
         system_messages.append(SystemMessage(content="Use summary of earlier conversation."))
-    system_messages.append(SystemMessage(content="Reply to the customer. Your reply should be succinct, precise, professional, polite. Do not exceed 100 words."))
+    system_messages.append(SystemMessage(
+        content="""
+            Respond to the customer in a way that is succinct, precise, professional, and polite.
+            If the customer’s message is off-topic or irrelevant,
+                acknowledge it courteously and guide the conversation back to the main topic.
+            Keep your response under 100 words.
+            """
+        ))
     ai_message = LLM.invoke(system_messages + state.messages)
     return {'messages' : ai_message}  # I can return ai_message without a list dues to reducer modification
 
@@ -91,13 +98,13 @@ def conclude_car_preferences(state: ConversationState):
     system_messages.append(SystemMessage(content="CAR PREFERENCE CONCLUDED EARLIER: " + state.car_preference.model_dump_json()))
     system_messages.append(
         SystemMessage(content="""
-        Instrunction:
-        1. Analyze latest communication with customer and summary of earlier communication if provided.
-        2. Update customer's car preferences only if it clearly comes from the communication and summary.
-        3. If you can't conclude particular information directly from the communication, try to conclude it from other concluded parameters e.g. type of car body can be derived from car model.
-        4. Update customers preferences only if you are sure. Do not hallucinate.
-        5. Do not update customers preference if you have more then one equivalent options to choose e.g. "suv" or "crossover".
-        """.strip())
+            Instrunction:
+            1. Analyze latest communication with customer and summary of earlier communication if provided.
+            2. Update customer's car preferences only if it clearly comes from the communication and summary.
+            3. If you can't conclude particular information directly from the communication, try to conclude it from other concluded parameters e.g. type of car body can be derived from car model.
+            4. Update customers preferences only if you are sure. Do not hallucinate.
+            5. Do not update customers preference if you have more then one concluded options to choose.
+        """)
     )
     logger.debug("messages to be passed to llm to conduct car preference:")
     for m in system_messages + state.messages:
@@ -118,7 +125,11 @@ NUM_OF_MESSAGES_TO_EVALUATE = 3
 def continue_chat(state: ConversationState) -> Literal[Q_NEED_SUMMARY, END]:
     logger_debug_basic(state, CONTINUE_CHAT, "edge")
     system_messages = [state.general_system_message]
-    system_messages.append(SystemMessage(content="Evaluate if customer wants to continue chat"))
+    system_messages.append(
+        SystemMessage(content="""
+            Evaluate if customer wants to continue chat.
+            Conclude False i.e. customer does not want to continue only if he expressed his will to finish.
+        """.strip()))
     llm_structured = LLM.with_structured_output(WantToContinue)
     messages = state.messages[-3:] if len(state.messages) > NUM_OF_MESSAGES_TO_EVALUATE else state.messages
     result = llm_structured.invoke(system_messages + messages)
