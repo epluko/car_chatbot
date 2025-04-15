@@ -21,6 +21,7 @@ REQUIRED_ENV = [
     "LANGSMITH_ENDPOINT",
     "LANGSMITH_TRACING",
     "LANGSMITH_PROJECT",
+    "GRAPH_MEMORY"
 ]
 
 # Global dict for env variables (API keys and other important env variables)

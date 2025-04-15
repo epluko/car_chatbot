@@ -18,7 +18,6 @@ from agent.utils import *
 
 
 
-
 def build_graph() -> CompiledStateGraph:
     """Builds graph, compiles it and returns a ready to use agent graph object.
     The structure of the graph is HARDCODED in this function.
@@ -45,12 +44,17 @@ def build_graph() -> CompiledStateGraph:
     graph_structure.add_edge(SUMMARY, CONCLUDE_PREF)
     graph_structure.add_edge(CONCLUDE_PREF, AI)
     graph_structure.add_edge(AI, HUMAN)
-    # building graph
-    # for langgraph in memory checkpointer can't be used ... it's handled by the dev server
-    # when working with demo app without postgres, checkpointer=graph_memory is required
-    graph = graph_structure.compile(interrupt_before=[HUMAN])
-    # graph = graph_structure.compile(interrupt_before=[HUMAN], checkpointer=graph_memory)
     
+    # building graph
+    # when working with demo app without postgres
+    #   checkpointer=graph_memory is required
+    # when working with langgraph studio
+    #   it takes care about the checkpointer and graph_memory can't be used!
+    if ENV["GRAPH_MEMORY"] == "true":
+        graph = graph_structure.compile(interrupt_before=[HUMAN], checkpointer=graph_memory)
+    else:
+        graph = graph_structure.compile(interrupt_before=[HUMAN])
+        
     # this works in Jupyter notebook - displays graph
     # display(Image(graph.get_graph(xray=1).draw_mermaid_png()))
     return graph
@@ -58,4 +62,5 @@ def build_graph() -> CompiledStateGraph:
 
 graph = build_graph()
 
-graph_config = {"configurable": {"thread_id": "3"}}
+# temp use
+# graph_config = {"configurable": {"thread_id": "3"}}
