@@ -19,4 +19,6 @@ pip install -r app/requirements.txt
 cp app/.env.tmpleate app/.env
 ```
 6. Run the streamlit app
+```
 streamlit run app/streamlit_app.py
+```
